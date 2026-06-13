@@ -22,7 +22,7 @@ script:
 
 ```html
 <div id="camf"></div>
-<script src="https://kalobtaulien.github.io/cocaine-anonymous-meetings/meeting-finder.js"></script>
+<script src="https://cawscit.github.io/ca-meeting-finder/meeting-finder.js"></script>
 ```
 
 That's it. The finder mounts into the `<div id="camf">` element and styles
@@ -48,7 +48,7 @@ Example with options:
   data-url="https://your-api.example.com/api/v1/meetings-tsml"
   data-maps-api="pk.your_mapbox_key"
 ></div>
-<script src="https://kalobtaulien.github.io/cocaine-anonymous-meetings/meeting-finder.js"></script>
+<script src="https://cawscit.github.io/ca-meeting-finder/meeting-finder.js"></script>
 ```
 
 ## 🛠️ Local development
@@ -75,14 +75,13 @@ npm run dev
 
 ## 📦 Deployment
 
-The embeddable bundle is built and published to GitHub Pages automatically on
-every push to `main` via the workflow in
-[`.github/workflows/deploy-embed.yml`](.github/workflows/deploy-embed.yml). The
-published file is served from:
+Every push to `main` triggers the workflow in
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which builds
+both the standalone web app and the embeddable bundle, then publishes them to
+the `gh-pages` branch. GitHub Pages serves that branch at:
 
-```
-https://kalobtaulien.github.io/cocaine-anonymous-meetings/meeting-finder.js
-```
+- **Standalone app:** <https://cawscit.github.io/ca-meeting-finder/>
+- **Embed bundle:** <https://cawscit.github.io/ca-meeting-finder/meeting-finder.js>
 
-To build the bundle yourself, run `npm run build:embed` and serve the contents
-of `dist/embed/`.
+To build locally, run `npm run build` (standalone app → `dist/`) and/or
+`npm run build:embed` (embed bundle → `dist/embed/`), then serve the output.
