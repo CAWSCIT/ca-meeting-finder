@@ -9,6 +9,12 @@ import path from "path";
 const MOUNT_ID = "#camf";
 
 export default defineConfig({
+  // Library mode does not auto-inline process.env.NODE_ENV the way an app build
+  // does, so React's `process.env.NODE_ENV` checks would survive into the
+  // bundle and throw "process is not defined" in the browser. Inline it here.
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("production"),
+  },
   plugins: [react(), cssInjectedByJsPlugin()],
   resolve: {
     alias: {
