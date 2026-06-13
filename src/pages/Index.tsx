@@ -134,7 +134,9 @@ const Index = () => {
   return (
     <>
       <LoadingScreen progress={loadingProgress} isVisible={showLoading} />
-      <div className="min-h-screen bg-background">
+      {/* @container makes descendants respond to THIS element's width (the embed's
+          parent container) rather than the browser window. See MeetingList / FilterBar. */}
+      <div className="@container min-h-screen bg-background">
       <FilterBar
         filters={filters}
         onFilterChange={updateFilters}

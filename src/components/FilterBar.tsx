@@ -124,7 +124,7 @@ export function FilterBar({
     <div className="bg-card border-b border-border sticky top-0 z-10">
       <div className="container py-4 space-y-4">
         {/* Search row */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col @[640px]:flex-row gap-3">
           {/* Text Search */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

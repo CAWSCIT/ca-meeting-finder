@@ -53,7 +53,7 @@ export function MeetingList({ meetings, isLoading }: MeetingListProps) {
 
   if (isLoading) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-3 @[640px]:grid-cols-2 @[1024px]:grid-cols-3 @[1280px]:grid-cols-4">
         {Array.from({ length: 12 }).map((_, i) => (
           <div
             key={i}
@@ -94,7 +94,7 @@ export function MeetingList({ meetings, isLoading }: MeetingListProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-3 @[640px]:grid-cols-2 @[1024px]:grid-cols-3 @[1280px]:grid-cols-4">
         {displayedMeetings.map((meeting) => (
           <MeetingCard key={meeting.slug} meeting={meeting} />
         ))}
