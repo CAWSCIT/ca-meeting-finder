@@ -76,6 +76,52 @@
   }
 }
 
+/*
+ * Embed isolation boundary.
+ *
+ * When embedded, the host page's CSS can leak into the widget — most commonly
+ * inherited typography (font, color, line-height) and flex/grid item styling
+ * that the host applies to the `#camf` mount element. This wrapper hard-resets
+ * every property at the boundary so inner elements only get the styles our own
+ * (Tailwind-scoped) CSS provides.
+ *
+ * Only used by the embed build, where the wrapper is added in embed.tsx and the
+ * postcss prefixer scopes this to `#camf .camf-app`. It's inert in the
+ * standalone app (the class is never applied), so the page is unaffected.
+ */
+@layer base {
+  .camf-app {
+    /* Wipe all inherited and host-set values at the boundary... */
+    all: initial;
+
+    /* ...then re-establish the baseline the widget expects. Custom properties
+       are not affected by `all`, so our design tokens still resolve. */
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1.5;
+    letter-spacing: normal;
+    text-align: left;
+    text-transform: none;
+    text-indent: 0;
+    white-space: normal;
+    word-spacing: normal;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;

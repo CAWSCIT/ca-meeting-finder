@@ -13,8 +13,19 @@ const queryClient = new QueryClient();
 const el = document.getElementById('camf');
 if (el) {
   initConfig(el.dataset);
-  createRoot(el).render(
-    <PortalContainerContext.Provider value={el}>
+
+  // The host page's `#camf` element may be a flex/grid item, so it inherits
+  // layout and typography styling from the surrounding page. Render the widget
+  // into a dedicated wrapper one level deeper: `#camf` absorbs the host's
+  // flex/grid item styling, while `.camf-app` hard-resets (see index.css) so
+  // inner elements get our own styles applied predictably. Portals (popovers,
+  // toasts, tooltips) mount into the wrapper too so they share the reset.
+  const root = document.createElement('div');
+  root.className = 'camf-app';
+  el.appendChild(root);
+
+  createRoot(root).render(
+    <PortalContainerContext.Provider value={root}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
