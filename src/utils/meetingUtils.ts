@@ -34,7 +34,7 @@ export const TYPE_LABELS: Record<string, string> = {
   X: "Wheelchair",
   H: "Handicapped",
   ASL: "ASL",
-  SP: "Spanish",
+  SP: "Speaker",
   AL: "Alternating",
   TC: "Location Temporarily Closed",
   ONL: "Online Only",
