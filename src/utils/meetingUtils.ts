@@ -54,6 +54,192 @@ export const TIME_RANGES: { value: TimeRange; label: string; range: string }[] =
   { value: "evening", label: "Evening", range: "5pm - 12am" },
 ];
 
+/**
+ * Deprecated IANA zone IDs ("backward" links) that still show up in the meeting
+ * feed. Newer mobile tzdata builds ship without those links, so handing one to
+ * Intl throws `RangeError: Invalid time zone: PST8PDT`. Map them to canonical
+ * zones before any Intl call.
+ *
+ * The fixed-offset abbreviations (EST, MST, CET, ...) are mapped to the region
+ * the feed almost certainly means rather than to a literal fixed offset, so
+ * they follow daylight saving like the rest of the listings.
+ */
+const LEGACY_TIMEZONES: Record<string, string> = {
+  // Fixed-offset abbreviations
+  CET: "Europe/Paris",
+  CST6CDT: "America/Chicago",
+  EET: "Europe/Athens",
+  EST: "America/New_York",
+  EST5EDT: "America/New_York",
+  GMT: "UTC",
+  "GMT+0": "UTC",
+  "GMT-0": "UTC",
+  GMT0: "UTC",
+  Greenwich: "UTC",
+  HST: "Pacific/Honolulu",
+  MET: "Europe/Paris",
+  MST: "America/Phoenix",
+  MST7MDT: "America/Denver",
+  PST8PDT: "America/Los_Angeles",
+  UCT: "UTC",
+  Universal: "UTC",
+  WET: "Europe/Lisbon",
+  Zulu: "UTC",
+  // United States
+  "US/Alaska": "America/Anchorage",
+  "US/Aleutian": "America/Adak",
+  "US/Arizona": "America/Phoenix",
+  "US/Central": "America/Chicago",
+  "US/East-Indiana": "America/Indiana/Indianapolis",
+  "US/Eastern": "America/New_York",
+  "US/Hawaii": "Pacific/Honolulu",
+  "US/Indiana-Starke": "America/Indiana/Knox",
+  "US/Michigan": "America/Detroit",
+  "US/Mountain": "America/Denver",
+  "US/Pacific": "America/Los_Angeles",
+  "US/Pacific-New": "America/Los_Angeles",
+  "US/Samoa": "Pacific/Pago_Pago",
+  Navajo: "America/Denver",
+  "America/Indianapolis": "America/Indiana/Indianapolis",
+  "America/Fort_Wayne": "America/Indiana/Indianapolis",
+  "America/Knox_IN": "America/Indiana/Knox",
+  "America/Louisville": "America/Kentucky/Louisville",
+  // Canada
+  "Canada/Atlantic": "America/Halifax",
+  "Canada/Central": "America/Winnipeg",
+  "Canada/Eastern": "America/Toronto",
+  "Canada/Mountain": "America/Edmonton",
+  "Canada/Newfoundland": "America/St_Johns",
+  "Canada/Pacific": "America/Vancouver",
+  "Canada/Saskatchewan": "America/Regina",
+  "Canada/Yukon": "America/Whitehorse",
+  "America/Montreal": "America/Toronto",
+  // Latin America
+  "Brazil/Acre": "America/Rio_Branco",
+  "Brazil/DeNoronha": "America/Noronha",
+  "Brazil/East": "America/Sao_Paulo",
+  "Brazil/West": "America/Manaus",
+  "Chile/Continental": "America/Santiago",
+  "Chile/EasterIsland": "Pacific/Easter",
+  Cuba: "America/Havana",
+  Jamaica: "America/Jamaica",
+  "Mexico/BajaNorte": "America/Tijuana",
+  "Mexico/BajaSur": "America/Mazatlan",
+  "Mexico/General": "America/Mexico_City",
+  "America/Buenos_Aires": "America/Argentina/Buenos_Aires",
+  "America/Godthab": "America/Nuuk",
+  // Europe
+  Eire: "Europe/Dublin",
+  GB: "Europe/London",
+  "GB-Eire": "Europe/London",
+  Iceland: "Atlantic/Reykjavik",
+  Poland: "Europe/Warsaw",
+  Portugal: "Europe/Lisbon",
+  Turkey: "Europe/Istanbul",
+  "W-SU": "Europe/Moscow",
+  "Europe/Kiev": "Europe/Kyiv",
+  "Europe/Belfast": "Europe/London",
+  "Atlantic/Faeroe": "Atlantic/Faroe",
+  // Africa & Middle East
+  Egypt: "Africa/Cairo",
+  Iran: "Asia/Tehran",
+  Israel: "Asia/Jerusalem",
+  Libya: "Africa/Tripoli",
+  "Africa/Asmera": "Africa/Asmara",
+  "Asia/Tel_Aviv": "Asia/Jerusalem",
+  "Asia/Istanbul": "Europe/Istanbul",
+  // Asia & Pacific
+  Hongkong: "Asia/Hong_Kong",
+  Japan: "Asia/Tokyo",
+  Kwajalein: "Pacific/Kwajalein",
+  NZ: "Pacific/Auckland",
+  "NZ-CHAT": "Pacific/Chatham",
+  PRC: "Asia/Shanghai",
+  ROC: "Asia/Taipei",
+  ROK: "Asia/Seoul",
+  Singapore: "Asia/Singapore",
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Chongqing": "Asia/Shanghai",
+  "Asia/Chungking": "Asia/Shanghai",
+  "Asia/Dacca": "Asia/Dhaka",
+  "Asia/Harbin": "Asia/Shanghai",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Macao": "Asia/Macau",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Asia/Saigon": "Asia/Ho_Chi_Minh",
+  "Asia/Ulan_Bator": "Asia/Ulaanbaatar",
+  "Pacific/Ponape": "Pacific/Pohnpei",
+  "Pacific/Samoa": "Pacific/Pago_Pago",
+  "Pacific/Truk": "Pacific/Chuuk",
+  // Australia
+  "Australia/ACT": "Australia/Sydney",
+  "Australia/Canberra": "Australia/Sydney",
+  "Australia/LHI": "Australia/Lord_Howe",
+  "Australia/NSW": "Australia/Sydney",
+  "Australia/North": "Australia/Darwin",
+  "Australia/Queensland": "Australia/Brisbane",
+  "Australia/South": "Australia/Adelaide",
+  "Australia/Tasmania": "Australia/Hobart",
+  "Australia/Victoria": "Australia/Melbourne",
+  "Australia/West": "Australia/Perth",
+};
+
+// Last resort when even the device's own zone can't be read.
+const FALLBACK_TIMEZONE = "UTC";
+
+let cachedUserTimezone: string | null = null;
+
+export function getUserTimezone(): string {
+  if (cachedUserTimezone) return cachedUserTimezone;
+  try {
+    cachedUserTimezone =
+      Intl.DateTimeFormat().resolvedOptions().timeZone || FALLBACK_TIMEZONE;
+  } catch {
+    cachedUserTimezone = FALLBACK_TIMEZONE;
+  }
+  return cachedUserTimezone;
+}
+
+function isSupportedTimezone(timezone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const resolvedTimezoneCache = new Map<string, string>();
+
+/**
+ * Resolve a feed timezone to one this device's Intl implementation accepts.
+ * Unknown zones fall back to the user's own zone (times then read as the feed
+ * sent them) so a single bad value can never break the whole meeting list.
+ */
+export function resolveTimezone(timezone: string | null | undefined): string {
+  const raw = (timezone || "").trim();
+  if (!raw) return getUserTimezone();
+
+  const cached = resolvedTimezoneCache.get(raw);
+  if (cached) return cached;
+
+  // Prefer the canonical name when we know one: every device accepts those,
+  // while the legacy alias may be missing from a trimmed tzdata build.
+  const canonical = LEGACY_TIMEZONES[raw];
+  const candidates = canonical ? [canonical, raw] : [raw];
+
+  let resolved = candidates.find(isSupportedTimezone);
+  if (!resolved) {
+    resolved = getUserTimezone();
+    console.warn(
+      `Unsupported meeting timezone "${raw}" - falling back to ${resolved}`
+    );
+  }
+
+  resolvedTimezoneCache.set(raw, resolved);
+  return resolved;
+}
+
 export function convertToLocalTime(
   time: string,
   meetingTimezone: string
@@ -65,8 +251,9 @@ export function convertToLocalTime(
     return cached;
   }
 
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  
+  const userTimezone = getUserTimezone();
+  const timezone = resolveTimezone(meetingTimezone);
+
   // Create a date object for today with the meeting time in the meeting's timezone
   const today = new Date();
   const [hours, minutes] = time.split(":").map(Number);
@@ -82,11 +269,11 @@ export function convertToLocalTime(
   
   // Get the meeting time as if it were in the meeting's timezone
   const meetingTimeInTz = formatTz(meetingDate, "yyyy-MM-dd'T'HH:mm:ss", {
-    timeZone: meetingTimezone,
+    timeZone: timezone,
   });
   
   // Parse this as a date in the meeting's timezone
-  const utcDate = new Date(meetingTimeInTz + getTimezoneOffset(meetingTimezone, meetingDate));
+  const utcDate = new Date(meetingTimeInTz + getTimezoneOffset(timezone, meetingDate));
   
   // Convert to user's local timezone
   const localDate = toZonedTime(utcDate, userTimezone);
@@ -260,17 +447,31 @@ export function getAllTypes(meetings: Meeting[]): string[] {
  */
 export function precomputeLocalTimes(meetings: Meeting[]): Meeting[] {
   return meetings.map((meeting) => {
-    const { time: localTime, hour } = convertToLocalTime(meeting.time, meeting.timezone);
-    const localEndTime = meeting.end_time
-      ? convertToLocalTime(meeting.end_time, meeting.timezone).time
-      : undefined;
+    try {
+      const { time: localTime, hour } = convertToLocalTime(meeting.time, meeting.timezone);
+      const localEndTime = meeting.end_time
+        ? convertToLocalTime(meeting.end_time, meeting.timezone).time
+        : undefined;
 
-    return {
-      ...meeting,
-      _localTime: localTime,
-      _localEndTime: localEndTime,
-      _localHour: hour,
-    };
+      return {
+        ...meeting,
+        _localTime: localTime,
+        _localEndTime: localEndTime,
+        _localHour: hour,
+      };
+    } catch (err) {
+      // Never let one unconvertible meeting take down the whole list: fall back
+      // to the raw feed time instead of throwing.
+      console.warn(`Could not convert time for meeting "${meeting.name}"`, err);
+      const [hours] = (meeting.time || "").split(":").map(Number);
+
+      return {
+        ...meeting,
+        _localTime: meeting.time,
+        _localEndTime: meeting.end_time || undefined,
+        _localHour: Number.isFinite(hours) ? hours : 0,
+      };
+    }
   });
 }
 
