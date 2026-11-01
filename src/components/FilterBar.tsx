@@ -3,7 +3,7 @@ import {
   DAY_SHORT_NAMES,
   TIME_RANGES,
   ATTENDANCE_LABELS,
-  TYPE_LABELS,
+  TypeGroup,
 } from "@/utils/meetingUtils";
 import { Search, X, ChevronDown, MapPin, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ import { getMapboxKey } from "@/config";
 interface FilterBarProps {
   filters: FilterState;
   onFilterChange: (filters: Partial<FilterState>) => void;
-  availableTypes: string[];
+  availableTypeGroups: TypeGroup[];
   totalCount: number;
   filteredCount: number;
   // Geolocation props
@@ -56,7 +56,7 @@ interface FilterBarProps {
 export function FilterBar({
   filters,
   onFilterChange,
-  availableTypes,
+  availableTypeGroups,
   totalCount,
   filteredCount,
   hasLocation,
@@ -90,12 +90,19 @@ export function FilterBar({
     });
   };
 
-  const toggleType = (type: string) => {
-    const newTypes = filters.types.includes(type)
-      ? filters.types.filter((t) => t !== type)
-      : [...filters.types, type];
+  const isGroupSelected = (group: TypeGroup) =>
+    group.codes.some((code) => filters.types.includes(code));
+
+  // A label can stand for several synonym codes - select or clear all of them.
+  const toggleGroup = (group: TypeGroup) => {
+    const newTypes = isGroupSelected(group)
+      ? filters.types.filter((t) => !group.codes.includes(t))
+      : [...filters.types, ...group.codes];
     onFilterChange({ types: newTypes });
   };
+
+  // Count labels the user picked, not the codes behind them.
+  const selectedGroupCount = availableTypeGroups.filter(isGroupSelected).length;
 
   const handleNearbyClick = () => {
     if (locationDenied) return;
@@ -262,8 +269,8 @@ export function FilterBar({
                 className="h-9 px-3 bg-background justify-between min-w-[120px]"
               >
                 <span>
-                  {filters.types.length > 0
-                    ? `${filters.types.length} type${filters.types.length > 1 ? "s" : ""}`
+                  {selectedGroupCount > 0
+                    ? `${selectedGroupCount} type${selectedGroupCount > 1 ? "s" : ""}`
                     : "Meeting Type"}
                 </span>
                 <ChevronDown className="h-4 w-4 ml-2 opacity-50" />
@@ -271,18 +278,16 @@ export function FilterBar({
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3" align="start">
               <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
-                {availableTypes.map((type) => (
+                {availableTypeGroups.map((group) => (
                   <label
-                    key={type}
+                    key={group.label}
                     className="flex items-center gap-2 py-1 px-1 rounded hover:bg-secondary cursor-pointer"
                   >
                     <Checkbox
-                      checked={filters.types.includes(type)}
-                      onCheckedChange={() => toggleType(type)}
+                      checked={isGroupSelected(group)}
+                      onCheckedChange={() => toggleGroup(group)}
                     />
-                    <span className="text-sm">
-                      {TYPE_LABELS[type] || type}
-                    </span>
+                    <span className="text-sm">{group.label}</span>
                   </label>
                 ))}
               </div>

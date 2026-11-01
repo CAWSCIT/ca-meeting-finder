@@ -2,7 +2,8 @@ import { memo } from "react";
 import { Meeting } from "@/types/meeting";
 import {
   DAY_NAMES,
-  TYPE_LABELS,
+  getTypeLabel,
+  getVisibleTypes,
   ATTENDANCE_LABELS,
 } from "@/utils/meetingUtils";
 import { MapPin, Clock, Globe, Video, Users, ExternalLink, Navigation } from "lucide-react";
@@ -108,12 +109,12 @@ export const MeetingCard = memo(function MeetingCard({ meeting }: MeetingCardPro
           </span>
 
           {/* Type badges */}
-          {(meeting.types || []).map((type) => (
+          {getVisibleTypes(meeting.types).map((type) => (
             <span
               key={type}
               className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-meeting-type-bg text-meeting-type-text"
             >
-              {TYPE_LABELS[type] || type}
+              {getTypeLabel(type)}
             </span>
           ))}
         </div>

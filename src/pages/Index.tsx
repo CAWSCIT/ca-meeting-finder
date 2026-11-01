@@ -20,7 +20,7 @@ const Index = () => {
     error,
     filters,
     updateFilters,
-    availableTypes,
+    availableTypeGroups,
   } = useMeetings();
 
   const geolocation = useGeolocation();
@@ -140,7 +140,7 @@ const Index = () => {
       <FilterBar
         filters={filters}
         onFilterChange={updateFilters}
-        availableTypes={availableTypes}
+        availableTypeGroups={availableTypeGroups}
         totalCount={allMeetings.length}
         filteredCount={displayMeetings.length}
         hasLocation={geolocation.hasLocation}

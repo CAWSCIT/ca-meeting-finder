@@ -4,7 +4,7 @@ import { Meeting, FilterState } from "@/types/meeting";
 import {
   filterMeetingsOptimized,
   sortMeetingsRolling,
-  getAllTypes,
+  getTypeGroups,
   precomputeLocalTimes,
 } from "@/utils/meetingUtils";
 import { getApiUrl } from "@/config";
@@ -53,7 +53,7 @@ export function useMeetings() {
     fetchMeetings();
   }, []);
 
-  const availableTypes = useMemo(() => getAllTypes(meetings), [meetings]);
+  const availableTypeGroups = useMemo(() => getTypeGroups(meetings), [meetings]);
 
   // Use deferred value for smoother filtering during typing
   const deferredFilters = useDeferredValue(filters);
@@ -101,6 +101,6 @@ export function useMeetings() {
     error,
     filters,
     updateFilters,
-    availableTypes,
+    availableTypeGroups,
   };
 }

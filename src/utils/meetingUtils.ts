@@ -1,3 +1,4 @@
+import { getTypesForLanguage } from "@code4recovery/spec";
 import { toZonedTime, format as formatTz } from "date-fns-tz";
 import { Meeting, FilterState, TimeRange } from "@/types/meeting";
 
@@ -16,29 +17,69 @@ export const DAY_NAMES = [
 
 export const DAY_SHORT_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export const TYPE_LABELS: Record<string, string> = {
-  O: "Open",
-  C: "Closed",
-  B: "Big Book",
-  D: "Discussion",
-  S: "Speaker",
-  ST: "Step",
-  TR: "Tradition",
-  M: "Men",
-  W: "Women",
-  Y: "Young People",
-  BE: "Beginner",
-  LIT: "Literature",
-  G: "Gay",
-  L: "Lesbian",
-  X: "Wheelchair",
-  H: "Handicapped",
-  ASL: "ASL",
-  SP: "Speaker",
-  AL: "Alternating",
-  TC: "Location Temporarily Closed",
+/**
+ * Meeting type codes carried in the feed that mean nothing to a visitor.
+ * Hidden from the type dropdown and from the badges on a meeting card.
+ */
+const IGNORED_TYPES = new Set([
+  "0",
+  "CG",
+  "CH",
+  "PA",
+  "RT",
+  "S/P",
+  "S&T",
+  "S&TR",
+]);
+
+/**
+ * Labels for codes the TSML UI spec does not define: site-specific conventions
+ * and feed misspellings. Several codes are synonyms that intentionally share a
+ * label (HOS/H&I, Q/QP, OO/On/"Online Zoom", CIG/CIGAR).
+ *
+ * Spread *after* the spec in TYPE_LABELS, so these win. None of them collides
+ * with a spec code today; the ordering keeps them intact if the spec later
+ * adopts one of these codes for something else.
+ */
+const CUSTOM_TYPE_LABELS: Record<string, string> = {
+  ASBI: "As Bill Sees It", // misspelling of the spec's ABSI, seen in the feed
+  CIG: "Cigar",
+  CIGAR: "Cigar",
+  F2F: "In Person",
+  "H&I": "Hospitals and Institutions",
+  HH: "Handicap Accessible",
+  HOS: "Hospitals and Institutions",
+  HYB: "Hybrid",
+  On: "Online",
   ONL: "Online Only",
+  "Online Zoom": "Online",
+  OO: "Online",
+  Q: "Quiet Peace",
+  QP: "Quiet Peace",
+  SPONSORSHIP: "Sponsorship",
+  TOP: "Topic",
+  TOPIC: "Topic Meeting",
 };
+
+/**
+ * English meeting type labels: the TSML UI spec
+ * (https://github.com/code4recovery/spec) for the 87 standard codes, with the
+ * custom labels above layered on top.
+ */
+export const TYPE_LABELS: Record<string, string> = {
+  ...getTypesForLanguage("en"),
+  ...CUSTOM_TYPE_LABELS,
+};
+
+/** Drop the codes that should never be shown to a visitor. */
+export function getVisibleTypes(types: string[] | null | undefined): string[] {
+  return (types || []).filter((type) => !IGNORED_TYPES.has(type));
+}
+
+/** Label for a meeting type code, falling back to the raw code. */
+export function getTypeLabel(type: string): string {
+  return TYPE_LABELS[type] || type;
+}
 
 export const ATTENDANCE_LABELS: Record<string, string> = {
   in_person: "In Person",
@@ -431,14 +472,34 @@ function getMinutesUntilMeeting(
   return minutesUntil;
 }
 
-export function getAllTypes(meetings: Meeting[]): string[] {
-  const typesSet = new Set<string>();
+/**
+ * One row in the type filter: a label plus every code that maps to it. Synonym
+ * codes (Q/QP, OO/On/"Online Zoom", HOS/H&I) collapse into a single row, so
+ * selecting it filters on all of them.
+ */
+export interface TypeGroup {
+  label: string;
+  codes: string[];
+}
+
+export function getTypeGroups(meetings: Meeting[]): TypeGroup[] {
+  const codesByLabel = new Map<string, Set<string>>();
+
   meetings.forEach((meeting) => {
     if (meeting.types && Array.isArray(meeting.types)) {
-      meeting.types.forEach((type) => typesSet.add(type));
+      getVisibleTypes(meeting.types).forEach((type) => {
+        const label = getTypeLabel(type);
+        const codes = codesByLabel.get(label) ?? new Set<string>();
+        codes.add(type);
+        codesByLabel.set(label, codes);
+      });
     }
   });
-  return Array.from(typesSet).sort();
+
+  // Sort by the label the user actually reads, not by the underlying code.
+  return Array.from(codesByLabel.entries())
+    .map(([label, codes]) => ({ label, codes: Array.from(codes).sort() }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /**
