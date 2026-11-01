@@ -126,7 +126,7 @@ export const MeetingCard = memo(function MeetingCard({ meeting }: MeetingCardPro
                 href={conferenceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
               >
                 <Video className="h-3.5 w-3.5" />
                 Join Online
