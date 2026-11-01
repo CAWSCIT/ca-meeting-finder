@@ -53,8 +53,6 @@ export function useMeetings() {
     fetchMeetings();
   }, []);
 
-  const availableTypeGroups = useMemo(() => getTypeGroups(meetings), [meetings]);
-
   // Use deferred value for smoother filtering during typing
   const deferredFilters = useDeferredValue(filters);
 
@@ -73,7 +71,10 @@ export function useMeetings() {
     });
   }, [meetings]);
 
-  const filteredMeetings = useMemo(() => {
+  // Everything except the type filter. The type dropdown is built from this so
+  // it only offers types that still have meetings under the other filters,
+  // while staying unaffected by the type selection itself.
+  const meetingsBeforeTypeFilter = useMemo(() => {
     let result = meetings;
 
     // Apply fuzzy search first if there's a search term
@@ -82,10 +83,22 @@ export function useMeetings() {
       result = searchResults.map((r) => r.item);
     }
 
-    // Apply optimized filters using pre-computed hours, then sort
-    const filtered = filterMeetingsOptimized(result, deferredFilters);
-    return sortMeetingsRolling(filtered);
+    // Apply optimized filters using pre-computed hours
+    return filterMeetingsOptimized(result, { ...deferredFilters, types: [] });
   }, [meetings, deferredFilters, fuse]);
+
+  const availableTypeGroups = useMemo(
+    () => getTypeGroups(meetingsBeforeTypeFilter, deferredFilters.types),
+    [meetingsBeforeTypeFilter, deferredFilters.types]
+  );
+
+  const filteredMeetings = useMemo(() => {
+    const filtered = filterMeetingsOptimized(
+      meetingsBeforeTypeFilter,
+      deferredFilters
+    );
+    return sortMeetingsRolling(filtered);
+  }, [meetingsBeforeTypeFilter, deferredFilters]);
 
   const updateFilters = (newFilters: Partial<FilterState>) => {
     if (newFilters.nearbyOnly !== undefined) {

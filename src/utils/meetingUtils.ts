@@ -482,19 +482,34 @@ export interface TypeGroup {
   codes: string[];
 }
 
-export function getTypeGroups(meetings: Meeting[]): TypeGroup[] {
+/**
+ * Build the type filter rows from the meetings given, so a type with nothing
+ * behind it is never offered.
+ *
+ * `alwaysInclude` keeps codes listed even when nothing matches them - pass the
+ * user's current selection, otherwise a type they already picked would vanish
+ * from the dropdown and leave them no way to untick it.
+ */
+export function getTypeGroups(
+  meetings: Meeting[],
+  alwaysInclude: string[] = []
+): TypeGroup[] {
   const codesByLabel = new Map<string, Set<string>>();
+
+  const addCode = (type: string) => {
+    const label = getTypeLabel(type);
+    const codes = codesByLabel.get(label) ?? new Set<string>();
+    codes.add(type);
+    codesByLabel.set(label, codes);
+  };
 
   meetings.forEach((meeting) => {
     if (meeting.types && Array.isArray(meeting.types)) {
-      getVisibleTypes(meeting.types).forEach((type) => {
-        const label = getTypeLabel(type);
-        const codes = codesByLabel.get(label) ?? new Set<string>();
-        codes.add(type);
-        codesByLabel.set(label, codes);
-      });
+      getVisibleTypes(meeting.types).forEach(addCode);
     }
   });
+
+  getVisibleTypes(alwaysInclude).forEach(addCode);
 
   // Sort by the label the user actually reads, not by the underlying code.
   return Array.from(codesByLabel.entries())
