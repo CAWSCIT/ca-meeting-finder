@@ -7,7 +7,7 @@ import {
   getTypeGroups,
   precomputeLocalTimes,
 } from "@/utils/meetingUtils";
-import { getApiUrl } from "@/config";
+import { getApiUrl, getDefaultView } from "@/config";
 
 export function useMeetings() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -17,7 +17,7 @@ export function useMeetings() {
     const today = new Date().getDay();
     const savedNearbyOnly = localStorage.getItem("nearbyOnly");
     return {
-      day: today,
+      day: getDefaultView() === "all" ? null : today,
       timeRange: "all",
       types: [],
       attendance: "all",

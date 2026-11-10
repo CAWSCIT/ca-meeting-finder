@@ -39,6 +39,7 @@ optional.
 | --------------- | ----------------------------------------------------------------- | -------------------------------------------------------------- |
 | `data-url`      | The meetings API endpoint (TSML format).                          | `https://caws-api.azurewebsites.net/api/v1/meetings-tsml`      |
 | `data-maps-api` | A Mapbox API key to enable map-based features. Omit to disable.   | _none_                                                         |
+| `data-view`     | Initial day filter: `today` shows just today's meetings, `all` shows the whole week. | `today`                                      |
 
 Example with options:
 
@@ -47,6 +48,7 @@ Example with options:
   id="camf"
   data-url="https://your-api.example.com/api/v1/meetings-tsml"
   data-maps-api="pk.your_mapbox_key"
+  data-view="today"
 ></div>
 <script src="https://cawscit.github.io/ca-meeting-finder/meeting-finder.js"></script>
 ```
