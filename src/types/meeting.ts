@@ -28,6 +28,8 @@ export interface Meeting {
   _localTime?: string;
   _localEndTime?: string;
   _localHour?: number;
+  /** City parsed out of `formatted_address`; "" when it names no town. */
+  _city?: string;
 }
 
 export type AttendanceType = "in_person" | "online" | "hybrid" | "all";

@@ -335,7 +335,8 @@ export function getCityLabel(meeting: Meeting): string {
   // vestigial "Long Beach, CA, USA" behind in the address.
   if (meeting.attendance_option === "online") return ONLINE_LOCATION_LABEL;
 
-  return parseCity(meeting.formatted_address) || meeting.area || "";
+  const city = meeting._city ?? parseCity(meeting.formatted_address);
+  return city || meeting.area || "";
 }
 
 export const TIME_RANGES: { value: TimeRange; label: string; range: string }[] = [
@@ -768,11 +769,14 @@ export function getTypeGroups(
 }
 
 /**
- * Pre-compute local times for all meetings to avoid repeated timezone conversions.
- * Call this once after fetching data.
+ * Pre-compute the derived fields every meeting needs - local times, so the
+ * timezone conversions aren't repeated per render, and the city, so the search
+ * index can match on it. Call this once after fetching data.
  */
-export function precomputeLocalTimes(meetings: Meeting[]): Meeting[] {
+export function prepareMeetings(meetings: Meeting[]): Meeting[] {
   return meetings.map((meeting) => {
+    const city = parseCity(meeting.formatted_address) || "";
+
     try {
       const { time: localTime, hour } = convertToLocalTime(meeting.time, meeting.timezone);
       const localEndTime = meeting.end_time
@@ -784,6 +788,7 @@ export function precomputeLocalTimes(meetings: Meeting[]): Meeting[] {
         _localTime: localTime,
         _localEndTime: localEndTime,
         _localHour: hour,
+        _city: city,
       };
     } catch (err) {
       // Never let one unconvertible meeting take down the whole list: fall back
@@ -796,6 +801,7 @@ export function precomputeLocalTimes(meetings: Meeting[]): Meeting[] {
         _localTime: meeting.time,
         _localEndTime: meeting.end_time || undefined,
         _localHour: Number.isFinite(hours) ? hours : 0,
+        _city: city,
       };
     }
   });

@@ -137,7 +137,7 @@ export function FilterBar({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search meetings by name, location, or area..."
+              placeholder="Search meetings by name, city, location, or area..."
               value={filters.search}
               onChange={(e) => onFilterChange({ search: e.target.value })}
               className="pl-9 pr-9 h-11 bg-background"
