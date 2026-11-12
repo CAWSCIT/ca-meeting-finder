@@ -1,8 +1,10 @@
 import { useMeetings } from "@/hooks/useMeetings";
 import { useGeolocation, calculateDistance } from "@/hooks/useGeolocation";
 import { useAddressSearch } from "@/hooks/useAddressSearch";
+import { useSelectedMeetingSlug } from "@/hooks/useSelectedMeetingSlug";
 import { FilterBar } from "@/components/FilterBar";
 import { MeetingList } from "@/components/MeetingList";
+import { MeetingDetail } from "@/components/MeetingDetail";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,21 @@ const Index = () => {
 
   const geolocation = useGeolocation();
   const addressSearch = useAddressSearch();
+  const { selectedSlug, selectMeeting, clearSelection } = useSelectedMeetingSlug();
+
+  const selectedMeeting = useMemo(
+    () => (selectedSlug ? allMeetings.find((m) => m.slug === selectedSlug) ?? null : null),
+    [selectedSlug, allMeetings]
+  );
+
+  // A shared link can point at a meeting that no longer exists in the feed
+  // (removed or renumbered) - once loading settles and it's still missing,
+  // drop back to the list instead of showing the detail screen forever blank.
+  useEffect(() => {
+    if (!isLoading && selectedSlug && !selectedMeeting) {
+      clearSelection();
+    }
+  }, [isLoading, selectedSlug, selectedMeeting, clearSelection]);
 
   // Loading progress simulation
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -137,28 +154,38 @@ const Index = () => {
       {/* @container makes descendants respond to THIS element's width (the embed's
           parent container) rather than the browser window. See MeetingList / FilterBar. */}
       <div className="@container min-h-screen bg-background">
-      <FilterBar
-        filters={filters}
-        onFilterChange={updateFilters}
-        availableTypeGroups={availableTypeGroups}
-        totalCount={allMeetings.length}
-        filteredCount={displayMeetings.length}
-        hasLocation={geolocation.hasLocation}
-        locationLoading={geolocation.loading}
-        locationDenied={geolocation.permissionDenied}
-        onRequestLocation={handleRequestLocation}
-        addressQuery={addressSearch.query}
-        addressSuggestions={addressSearch.suggestions}
-        addressLoading={addressSearch.isLoading}
-        hasSearchLocation={!!addressSearch.selectedLocation}
-        onAddressSearch={addressSearch.searchAddress}
-        onAddressSelect={addressSearch.selectLocation}
-        onAddressClear={addressSearch.clearLocation}
-      />
-      
-      <main className="container py-6">
-        <MeetingList meetings={displayMeetings} isLoading={isLoading} />
-      </main>
+      {selectedMeeting ? (
+        <MeetingDetail meeting={selectedMeeting} onBack={clearSelection} />
+      ) : (
+        <>
+          <FilterBar
+            filters={filters}
+            onFilterChange={updateFilters}
+            availableTypeGroups={availableTypeGroups}
+            totalCount={allMeetings.length}
+            filteredCount={displayMeetings.length}
+            hasLocation={geolocation.hasLocation}
+            locationLoading={geolocation.loading}
+            locationDenied={geolocation.permissionDenied}
+            onRequestLocation={handleRequestLocation}
+            addressQuery={addressSearch.query}
+            addressSuggestions={addressSearch.suggestions}
+            addressLoading={addressSearch.isLoading}
+            hasSearchLocation={!!addressSearch.selectedLocation}
+            onAddressSearch={addressSearch.searchAddress}
+            onAddressSelect={addressSearch.selectLocation}
+            onAddressClear={addressSearch.clearLocation}
+          />
+
+          <main className="container py-6">
+            <MeetingList
+              meetings={displayMeetings}
+              isLoading={isLoading}
+              onSelectMeeting={(meeting) => selectMeeting(meeting.slug)}
+            />
+          </main>
+        </>
+      )}
     </div>
     </>
   );

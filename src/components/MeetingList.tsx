@@ -6,11 +6,12 @@ import { Calendar, Loader2 } from "lucide-react";
 interface MeetingListProps {
   meetings: Meeting[];
   isLoading: boolean;
+  onSelectMeeting?: (meeting: Meeting) => void;
 }
 
 const ITEMS_PER_PAGE = 21;
 
-export function MeetingList({ meetings, isLoading }: MeetingListProps) {
+export function MeetingList({ meetings, isLoading, onSelectMeeting }: MeetingListProps) {
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   const loaderRef = useRef<HTMLDivElement>(null);
 
@@ -96,7 +97,7 @@ export function MeetingList({ meetings, isLoading }: MeetingListProps) {
     <div className="space-y-6">
       <div className="grid gap-3 @[640px]:grid-cols-2 @[1024px]:grid-cols-3 @[1280px]:grid-cols-4">
         {displayedMeetings.map((meeting) => (
-          <MeetingCard key={meeting.slug} meeting={meeting} />
+          <MeetingCard key={meeting.slug} meeting={meeting} onSelect={onSelectMeeting} />
         ))}
       </div>
 

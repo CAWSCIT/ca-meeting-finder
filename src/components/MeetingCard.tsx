@@ -1,8 +1,9 @@
-import { memo } from "react";
+import { memo, KeyboardEvent, MouseEvent } from "react";
 import { Meeting } from "@/types/meeting";
 import {
   DAY_NAMES,
   getCityLabel,
+  getGoogleMapsUrl,
   getTypeLabel,
   getVisibleTypes,
   ATTENDANCE_LABELS,
@@ -12,9 +13,10 @@ import { MapPin, Clock, Globe, Video, Users, ExternalLink, Navigation } from "lu
 
 interface MeetingCardProps {
   meeting: Meeting;
+  onSelect?: (meeting: Meeting) => void;
 }
 
-export const MeetingCard = memo(function MeetingCard({ meeting }: MeetingCardProps) {
+export const MeetingCard = memo(function MeetingCard({ meeting, onSelect }: MeetingCardProps) {
   // Use pre-computed local times if available
   const localTime = meeting._localTime || "";
   const localEndTime = meeting._localEndTime || "";
@@ -36,30 +38,39 @@ export const MeetingCard = memo(function MeetingCard({ meeting }: MeetingCardPro
   // Check if meeting has online option
   const hasOnlineOption =
     meeting.attendance_option === "online" || meeting.attendance_option === "hybrid";
-  const conferenceUrl = (meeting as any).conference_url;
+  const conferenceUrl = meeting.conference_url;
 
   // Check if meeting has in-person option
   const hasInPersonOption =
     meeting.attendance_option === "in_person" || meeting.attendance_option === "hybrid";
 
-  // Build Google Maps URL
-  const getGoogleMapsUrl = () => {
-    if (meeting.latitude && meeting.longitude) {
-      return `https://www.google.com/maps/search/?api=1&query=${meeting.latitude},${meeting.longitude}`;
-    }
-    if (meeting.formatted_address) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meeting.formatted_address)}`;
-    }
-    return null;
-  };
-
-  const mapsUrl = hasInPersonOption ? getGoogleMapsUrl() : null;
+  const mapsUrl = hasInPersonOption ? getGoogleMapsUrl(meeting) : null;
 
   const displayCity = getDisplayLocation() === "city";
   const cityLabel = displayCity ? getCityLabel(meeting) : "";
 
+  // The action links below open their own target, so a click there must not
+  // also open the detail screen underneath them.
+  const stopPropagation = (e: MouseEvent) => e.stopPropagation();
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    if (!onSelect) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect(meeting);
+    }
+  };
+
   return (
-    <article className="group bg-card rounded-lg border border-border p-4 shadow-meeting-card hover:shadow-meeting-card-hover transition-all duration-200 animate-fade-in">
+    <article
+      className={`group bg-card rounded-lg border border-border p-4 shadow-meeting-card hover:shadow-meeting-card-hover transition-all duration-200 animate-fade-in ${
+        onSelect ? "cursor-pointer" : ""
+      }`}
+      onClick={onSelect ? () => onSelect(meeting) : undefined}
+      onKeyDown={onSelect ? handleKeyDown : undefined}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+    >
       <div className="flex flex-col gap-3">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
@@ -136,6 +147,7 @@ export const MeetingCard = memo(function MeetingCard({ meeting }: MeetingCardPro
                 href={conferenceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={stopPropagation}
                 className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
               >
                 <Video className="h-3.5 w-3.5" />
@@ -148,6 +160,7 @@ export const MeetingCard = memo(function MeetingCard({ meeting }: MeetingCardPro
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={stopPropagation}
                 className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
               >
                 <Navigation className="h-3.5 w-3.5" />

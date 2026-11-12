@@ -88,6 +88,17 @@ export const ATTENDANCE_LABELS: Record<string, string> = {
   all: "All Formats",
 };
 
+/** A Google Maps search link for a meeting's venue, or null if it has none. */
+export function getGoogleMapsUrl(meeting: Meeting): string | null {
+  if (meeting.latitude && meeting.longitude) {
+    return `https://www.google.com/maps/search/?api=1&query=${meeting.latitude},${meeting.longitude}`;
+  }
+  if (meeting.formatted_address) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meeting.formatted_address)}`;
+  }
+  return null;
+}
+
 /** Shown instead of a city when a meeting has nowhere to be. */
 export const ONLINE_LOCATION_LABEL = "Online meeting";
 
