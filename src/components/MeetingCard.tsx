@@ -2,10 +2,12 @@ import { memo } from "react";
 import { Meeting } from "@/types/meeting";
 import {
   DAY_NAMES,
+  getCityLabel,
   getTypeLabel,
   getVisibleTypes,
   ATTENDANCE_LABELS,
 } from "@/utils/meetingUtils";
+import { getDisplayLocation } from "@/config";
 import { MapPin, Clock, Globe, Video, Users, ExternalLink, Navigation } from "lucide-react";
 
 interface MeetingCardProps {
@@ -53,6 +55,9 @@ export const MeetingCard = memo(function MeetingCard({ meeting }: MeetingCardPro
 
   const mapsUrl = hasInPersonOption ? getGoogleMapsUrl() : null;
 
+  const displayCity = getDisplayLocation() === "city";
+  const cityLabel = displayCity ? getCityLabel(meeting) : "";
+
   return (
     <article className="group bg-card rounded-lg border border-border p-4 shadow-meeting-card hover:shadow-meeting-card-hover transition-all duration-200 animate-fade-in">
       <div className="flex flex-col gap-3">
@@ -91,12 +96,16 @@ export const MeetingCard = memo(function MeetingCard({ meeting }: MeetingCardPro
           </div>
         )}
 
-        {/* Region/Area */}
-        <div className="text-xs text-muted-foreground">
-          {meeting.area && <span>{meeting.area}</span>}
-          {meeting.area && meeting.region && <span> · </span>}
-          {meeting.region && <span>{meeting.region}</span>}
-        </div>
+        {/* Area/region, or the city - see `data-display-location` */}
+        {displayCity ? (
+          cityLabel && <div className="text-xs text-muted-foreground">{cityLabel}</div>
+        ) : (
+          <div className="text-xs text-muted-foreground">
+            {meeting.area && <span>{meeting.area}</span>}
+            {meeting.area && meeting.region && <span> · </span>}
+            {meeting.region && <span>{meeting.region}</span>}
+          </div>
+        )}
 
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">

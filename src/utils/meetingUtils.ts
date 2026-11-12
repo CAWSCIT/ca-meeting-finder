@@ -88,6 +88,256 @@ export const ATTENDANCE_LABELS: Record<string, string> = {
   all: "All Formats",
 };
 
+/** Shown instead of a city when a meeting has nowhere to be. */
+export const ONLINE_LOCATION_LABEL = "Online meeting";
+
+/**
+ * Countries the feed's Google-style `formatted_address` ends with. The feed
+ * only reaches a few dozen today; the extras cost nothing and keep the parser
+ * working as the listings spread.
+ */
+const ADDRESS_COUNTRIES = new Set([
+  "argentina",
+  "australia",
+  "austria",
+  "bahamas",
+  "barbados",
+  "belgië",
+  "belgique",
+  "belgium",
+  "bermuda",
+  "brazil",
+  "ca",
+  "canada",
+  "chile",
+  "colombia",
+  "costa rica",
+  "czechia",
+  "denmark",
+  "deutschland",
+  "egypt",
+  "españa",
+  "finland",
+  "france",
+  "germany",
+  "ghana",
+  "greece",
+  "hong kong",
+  "hungary",
+  "iceland",
+  "india",
+  "indonesia",
+  "ireland",
+  "israel",
+  "italy",
+  "jamaica",
+  "japan",
+  "kenya",
+  "malta",
+  "mexico",
+  "morocco",
+  "nederland",
+  "netherlands",
+  "new zealand",
+  "nigeria",
+  "norway",
+  "panama",
+  "peru",
+  "philippines",
+  "poland",
+  "portugal",
+  "puerto rico",
+  "russia",
+  "saint james barbados",
+  "singapore",
+  "south africa",
+  "south korea",
+  "spain",
+  "sweden",
+  "switzerland",
+  "thailand",
+  "trinidad and tobago",
+  "turkey",
+  "uae",
+  "uk",
+  "united arab emirates",
+  "united kingdom",
+  "united states",
+  "united states of america",
+  "usa",
+]);
+
+/**
+ * Spelled-out states, provinces and home nations. Only dropped when a street
+ * and a locality still sit in front of them, because several are also city
+ * names ("Québec, Québec" is a real address).
+ */
+const ADDRESS_REGIONS = new Set([
+  "alberta",
+  "british columbia",
+  "england",
+  "manitoba",
+  "new brunswick",
+  "newfoundland and labrador",
+  "northern ireland",
+  "northwest territories",
+  "nova scotia",
+  "nunavut",
+  "ontario",
+  "prince edward island",
+  "quebec",
+  "québec",
+  "saskatchewan",
+  "scotland",
+  "wales",
+  "yukon",
+]);
+
+/** State/province codes, which are never a city name on their own. */
+const ADDRESS_REGION_CODES = new Set([
+  // United States
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI",
+  "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN",
+  "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH",
+  "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT",
+  "WA", "WI", "WV", "WY",
+  // Canada
+  "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
+  // Australia
+  "ACT", "NSW", "QLD", "SA", "TAS", "VIC",
+]);
+
+/** Whole address parts that are a postal code, or a region code plus one. */
+const POSTAL_PART_PATTERNS = [
+  /^\d{3,6}(?:-\d{3,4})?$/, // 85004, 1509, 1070-373
+  /^[A-Za-z]{2}\s+\d{5}(?:-\d{4})?$/, // AZ 85004
+  /^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/, // BN2 1ED (UK)
+  /^[A-Za-z]\d{2}\s?[A-Za-z\d]{3,4}$/, // X91 RDW7 (Ireland, sometimes a digit short)
+  // V1A 3C8 and BC V1A 3C8 (Canada), sometimes cut to the first half
+  /^(?:[A-Za-z]{2}\s+)?[A-Za-z]\d[A-Za-z](?:\s?\d[A-Za-z]\d)?$/,
+];
+
+/** Postal codes glued to the front of the city, as in "147 30 Tumba". */
+const POSTAL_PREFIX = /^(?:\d{4}\s?[A-Za-z]{2}|\d{3}\s\d{2}|\d{4}-\d{3}|\d{4,6})\s+/;
+
+/** Postal codes (and region codes) trailing the city, as in "London W11 2AY". */
+const POSTAL_SUFFIXES = [
+  /\s+[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/, // London W11 2AY
+  /\s+[A-Za-z]{2,3}\s+\d{4}$/, // Darlinghurst NSW 2010
+  /\s+[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/, // Kelowna V1Y 6H5
+  /\s+\d{4,6}(?:-\d{4})?$/, // Chiang Mai 50300
+  // A bare UK outcode: "Glasgow G31". A trailing number on its own is left
+  // alone, because Irish addresses postfix the city with its postal district
+  // ("Dublin 12") and some place names simply end in one ("Skidegate 1").
+  /\s+[A-Za-z]{1,2}\d{1,2}[A-Za-z]?$/,
+];
+
+const isPostalPart = (part: string) =>
+  POSTAL_PART_PATTERNS.some((pattern) => pattern.test(part));
+
+const isCountyPart = (part: string) => /^(?:co\.|county)\s/i.test(part);
+
+/**
+ * An address that peels down to a single part naming a street gave us no
+ * locality at all ("Overtoun Rd, United Kingdom"). Only the abbreviated forms
+ * are listed: real cities end in the spelled-out words ("Federal Way").
+ */
+const isStreetOnly = (part: string) =>
+  /\s(?:ave|blvd|cres|dr|hwy|ln|rd|st|ter)\.?$/i.test(part);
+
+/** Parts that can never be the city, however short the address is. */
+const isNeverCity = (part: string) =>
+  ADDRESS_COUNTRIES.has(part.toLowerCase()) ||
+  ADDRESS_REGION_CODES.has(part.toUpperCase()) ||
+  isPostalPart(part);
+
+const cityCache = new Map<string, string | null>();
+
+/**
+ * Pull the city out of a Google-style formatted address by peeling country,
+ * region and postal code off the end: "1124 N 3rd St, Phoenix, AZ 85004, USA"
+ * gives "Phoenix", "Om en bij 1, 2512 XK Den Haag, Nederland" gives
+ * "Den Haag". Returns null when nothing city-shaped is left - an online-only
+ * listing ("Online"), or an address that never named a town.
+ */
+export function parseCity(formattedAddress: string | null | undefined): string | null {
+  const address = (formattedAddress || "").trim();
+  // Online-only listings carry a literal "Online" in place of an address.
+  if (!address || /^online$/i.test(address)) return null;
+
+  const cached = cityCache.get(address);
+  if (cached !== undefined) return cached;
+
+  // A handful of listings separate with " - " instead of commas.
+  const parts = (address.includes(",") ? address.split(",") : address.split(" - "))
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  // A spelled-out region or county only yields the city if one is still left
+  // in front of it, so it needs a street *and* a locality behind it - and only
+  // the first of each comes off, because "Québec, Québec" names a city inside
+  // a province of the same name.
+  let regionDropped = false;
+  let countyDropped = false;
+
+  while (parts.length > 1) {
+    const last = parts[parts.length - 1];
+    const isRegion = !regionDropped && ADDRESS_REGIONS.has(last.toLowerCase());
+    const isCounty = !countyDropped && isCountyPart(last);
+    const droppableWithRoom = parts.length > 2 && (isRegion || isCounty);
+
+    if (!isNeverCity(last) && !droppableWithRoom) break;
+    if (isRegion) regionDropped = true;
+    if (isCounty) countyDropped = true;
+    parts.pop();
+  }
+
+  const streetOnly = parts.length === 1 && isStreetOnly(parts[0]);
+
+  let city = (parts[parts.length - 1] || "").replace(POSTAL_PREFIX, "");
+  // Repeat until nothing more comes off: a few listings carry two postcodes
+  // in a row ("London E1 5NG E1 5NW").
+  for (let pass = 0; pass < POSTAL_SUFFIXES.length; pass++) {
+    const stripped = POSTAL_SUFFIXES.reduce(
+      (value, pattern) => value.replace(pattern, ""),
+      city
+    );
+    if (stripped === city) break;
+    city = stripped;
+  }
+  city = city.trim();
+
+  // Whatever is left may still be the country or region itself, as in the
+  // bare "Portugal" or "Wales, UK" some listings carry. A region name does
+  // stand once its own region has already come off the end, which is how
+  // "Québec, Québec" keeps the city.
+  const result =
+    !city ||
+    streetOnly ||
+    ADDRESS_COUNTRIES.has(city.toLowerCase()) ||
+    (!regionDropped && ADDRESS_REGIONS.has(city.toLowerCase())) ||
+    isNeverCity(city)
+      ? null
+      : city;
+
+  cityCache.set(address, result);
+  return result;
+}
+
+/**
+ * The city line for a meeting card: the town the meeting sits in, or a note
+ * that it's online when there is no venue to point at. Falls back to the C.A.
+ * area when the feed's address never names a city, and to nothing at all when
+ * even that is missing.
+ */
+export function getCityLabel(meeting: Meeting): string {
+  // An online-only meeting isn't held in any town, even when the feed leaves a
+  // vestigial "Long Beach, CA, USA" behind in the address.
+  if (meeting.attendance_option === "online") return ONLINE_LOCATION_LABEL;
+
+  return parseCity(meeting.formatted_address) || meeting.area || "";
+}
+
 export const TIME_RANGES: { value: TimeRange; label: string; range: string }[] = [
   { value: "all", label: "Any Time", range: "" },
   { value: "morning", label: "Morning", range: "6am - 12pm" },

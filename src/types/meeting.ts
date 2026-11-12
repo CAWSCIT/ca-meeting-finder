@@ -32,6 +32,9 @@ export interface Meeting {
 
 export type AttendanceType = "in_person" | "online" | "hybrid" | "all";
 
+/** Which place a meeting card names: its C.A. area, or the city it's held in. */
+export type DisplayLocation = "area" | "city";
+
 export type TimeRange = "all" | "morning" | "afternoon" | "evening";
 
 export interface FilterState {

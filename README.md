@@ -40,6 +40,7 @@ optional.
 | `data-url`      | The meetings API endpoint (TSML format).                          | `https://caws-api.azurewebsites.net/api/v1/meetings-tsml`      |
 | `data-maps-api` | A Mapbox API key to enable map-based features. Omit to disable.   | _none_                                                         |
 | `data-view`     | Initial day filter: `today` shows just today's meetings, `all` shows the whole week. | `today`                                      |
+| `data-display-location` | Which place each meeting card names: `area` uses the C.A. area and region, `city` uses the town the meeting is held in. Online-only meetings read "Online meeting"; a card falls back to its area when the listing's address never names a city. | `area` |
 
 Example with options:
 
@@ -49,6 +50,7 @@ Example with options:
   data-url="https://your-api.example.com/api/v1/meetings-tsml"
   data-maps-api="pk.your_mapbox_key"
   data-view="today"
+  data-display-location="area"
 ></div>
 <script src="https://cawscit.github.io/ca-meeting-finder/meeting-finder.js"></script>
 ```
