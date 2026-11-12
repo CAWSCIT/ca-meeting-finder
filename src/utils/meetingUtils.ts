@@ -346,8 +346,26 @@ export function getCityLabel(meeting: Meeting): string {
   // vestigial "Long Beach, CA, USA" behind in the address.
   if (meeting.attendance_option === "online") return ONLINE_LOCATION_LABEL;
 
-  const city = meeting._city ?? parseCity(meeting.formatted_address);
-  return city || meeting.area || "";
+  const city = meeting._city ?? meeting.city ?? parseCity(meeting.formatted_address);
+  return city || meeting.area || meeting.region || "";
+}
+
+/**
+ * Not every feed shares the same shape. The default demo feed only sends a
+ * Google-style `formatted_address` and leaves the city to be parsed out of
+ * it; ca.org's production feed (ca-connect.org) never sends one at all and
+ * gives `address`, `city`, `state`, `postal_code` and `country` as their own
+ * fields instead. Build a formatted_address out of those when the feed did
+ * not already give us one, so every other file in the app only has to deal
+ * with a single shape.
+ */
+function synthesizeFormattedAddress(meeting: Meeting): string {
+  if (meeting.formatted_address) return meeting.formatted_address;
+
+  return [meeting.address, meeting.city, meeting.state, meeting.postal_code, meeting.country]
+    .map((part) => (part || "").toString().trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
 export const TIME_RANGES: { value: TimeRange; label: string; range: string }[] = [
@@ -786,7 +804,10 @@ export function getTypeGroups(
  */
 export function prepareMeetings(meetings: Meeting[]): Meeting[] {
   return meetings.map((meeting) => {
-    const city = parseCity(meeting.formatted_address) || "";
+    const formattedAddress = synthesizeFormattedAddress(meeting);
+    // Prefer the feed's own city field when it has one - more reliable than
+    // parsing it back out of an address we may have just assembled ourselves.
+    const city = meeting.city || parseCity(formattedAddress) || "";
 
     try {
       const { time: localTime, hour } = convertToLocalTime(meeting.time, meeting.timezone);
@@ -796,6 +817,7 @@ export function prepareMeetings(meetings: Meeting[]): Meeting[] {
 
       return {
         ...meeting,
+        formatted_address: formattedAddress,
         _localTime: localTime,
         _localEndTime: localEndTime,
         _localHour: hour,
@@ -809,6 +831,7 @@ export function prepareMeetings(meetings: Meeting[]): Meeting[] {
 
       return {
         ...meeting,
+        formatted_address: formattedAddress,
         _localTime: meeting.time,
         _localEndTime: meeting.end_time || undefined,
         _localHour: Number.isFinite(hours) ? hours : 0,

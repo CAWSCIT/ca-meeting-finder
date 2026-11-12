@@ -24,11 +24,20 @@ export interface Meeting {
   attendance_option: "in_person" | "online" | "hybrid";
   formatted_address: string;
   conference_phone_notes: string;
+  // Not every feed sends a single `formatted_address` - some (e.g. ca.org's
+  // production feed) give the city, state, country and postal code as their
+  // own fields instead and never send formatted_address at all. prepareMeetings
+  // normalizes either shape into formatted_address + _city, but these raw
+  // fields are declared so that normalization can read them.
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
   // Pre-computed fields for performance
   _localTime?: string;
   _localEndTime?: string;
   _localHour?: number;
-  /** City parsed out of `formatted_address`; "" when it names no town. */
+  /** The meeting's city: its own `city` field, or one parsed out of the address. "" when neither names a town. */
   _city?: string;
 }
 

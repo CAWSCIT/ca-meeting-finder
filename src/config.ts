@@ -1,6 +1,6 @@
 import { DisplayLocation } from "@/types/meeting";
 
-let apiUrl = "https://caws-api.azurewebsites.net/api/v1/meetings-tsml";
+let apiUrl = "https://ca-connect.org/api/v1/tsml/all/";
 let mapboxKey: string | null = null;
 let defaultView: "today" | "all" = "today";
 let displayLocation: DisplayLocation = "area";
